@@ -28,3 +28,63 @@ def load_data() -> pd.DataFrame:
     return combine_table
 
 combine_table = load_data()
+
+# Time range inputs
+with st.sidebar:
+    st.subheader("Date range")
+
+    start_date = st.date_input(
+        "Start",
+        value=combine_table["time"].min().date(),
+        format="DD/MM/YYYY"
+    )
+
+    end_date = st.date_input(
+        "End",
+        value=combine_table["time"].max().date(),
+        format="DD/MM/YYYY"
+    )
+    
+    # Grouped by SelectBox
+    group_by = st.selectbox(label="Group data by",
+                             options=["Daily", "Weekly", "Monthly"])
+
+filtered_combine_table: pd.DataFrame = combine_table[
+    (combine_table["time"].dt.date >= start_date) &
+    (combine_table["time"].dt.date <= end_date)
+]
+# Chart by consumption
+st.line_chart(
+   active_table,
+   x="time",
+   y="consumption_kwh",
+   x_label="Time",
+   y_label="Electricity consumption (kWh)"
+)
+
+# Chart by price
+st.line_chart(
+   active_table,
+   x="time",
+   y="avg_price_cents",
+   x_label="Time",
+   y_label="Electricity price(¢)"
+)
+
+# Chart by bill
+st.line_chart(
+   active_table,
+   x="time",
+   y="bill_eur",
+   x_label="Time",
+   y_label="Electricity bill (€)"
+)
+
+# Chart by temperature
+st.line_chart(
+   active_table,
+   x="time",
+   y="avg_temperature",
+   x_label="Time",
+   y_label="Temperature (°C)"
+)
