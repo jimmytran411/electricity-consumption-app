@@ -53,6 +53,52 @@ filtered_combine_table: pd.DataFrame = combine_table[
     (combine_table["time"].dt.date >= start_date) &
     (combine_table["time"].dt.date <= end_date)
 ]
+
+# Grouped values (daily / weekly / monthly): consumption, bill, avg price, avg temperature
+daily_data = (
+    filtered_combine_table
+    .groupby(pd.Grouper(key="time", freq="D"))
+    .agg(
+        consumption_kwh=("kWh", "sum"),
+        bill_eur=("hourly_bill_eur", "sum"),
+        avg_price_cents=("Price", "mean"),
+        avg_temperature=("Temperature", "mean"),
+    )
+    .reset_index()
+)
+
+weekly_data = (
+    filtered_combine_table
+    .groupby(pd.Grouper(key="time", freq="W"))
+    .agg(
+        consumption_kwh=("kWh", "sum"),
+        bill_eur=("hourly_bill_eur", "sum"),
+        avg_price_cents=("Price", "mean"),
+        avg_temperature=("Temperature", "mean"),
+    )
+    .reset_index()
+    )
+    
+monthly_data = (
+    filtered_combine_table
+    .groupby(pd.Grouper(key="time", freq="ME"))
+    .agg(
+        consumption_kwh=("kWh", "sum"),
+        bill_eur=("hourly_bill_eur", "sum"),
+        avg_price_cents=("Price", "mean"),
+        avg_temperature=("Temperature", "mean"),
+    )
+    .reset_index()
+)
+
+period_data_map = {
+    "Daily": daily_data,
+    "Weekly": weekly_data,
+    "Monthly": monthly_data
+}
+
+active_table = period_data_map[group_by]
+
 # Chart by consumption
 st.line_chart(
    active_table,
