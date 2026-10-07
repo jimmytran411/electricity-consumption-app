@@ -4,9 +4,6 @@ import streamlit as st
 CONSUMPTION_FILE = "Electricity_consumption_2015-2025.csv"
 PRICE_FILE = "Electricity_price_2015-2025.csv"
 
-st.title("Electricity consumption and bill")
-
-
 @st.cache_data
 def load_data() -> pd.DataFrame:
     # consumption: "time,kWh,Temperature" (comma separated, ISO timestamps)
@@ -49,6 +46,12 @@ with st.sidebar:
     group_by = st.selectbox(label="Group data by",
                              options=["Daily", "Weekly", "Monthly"])
 
+    chart_selection = st.selectbox(
+        "Show chart",
+        options=["All", "Consumption", "Price", "Bill", "Temperature"],
+    )
+
+# Filter data by time range
 filtered_combine_table: pd.DataFrame = combine_table[
     (combine_table["time"].dt.date >= start_date) &
     (combine_table["time"].dt.date <= end_date)
@@ -97,40 +100,34 @@ period_data_map = {
     "Monthly": monthly_data
 }
 
-active_table = period_data_map[group_by]
+active_table = period_data_map[group_by].round(1)
 
-# Chart by consumption
-st.line_chart(
-   active_table,
-   x="time",
-   y="consumption_kwh",
-   x_label="Time",
-   y_label="Electricity consumption (kWh)"
-)
+# Change title by chart type selection
+title_by_chart = {
+    "All": "Electricity Overview",
+    "Consumption": f"{group_by} Electricity Consumption",
+    "Price": f"{group_by} Electricity Price",
+    "Bill": f"{group_by} Electricity Bill",
+    "Temperature": f"{group_by} Average Temperature",
+}
+st.title(title_by_chart[chart_selection])
 
-# Chart by price
-st.line_chart(
-   active_table,
-   x="time",
-   y="avg_price_cents",
-   x_label="Time",
-   y_label="Electricity price(¢)"
-)
+charts = {
+    "Consumption": ("consumption_kwh", "Electricity consumption (kWh)"),
+    "Price": ("avg_price_cents", "Electricity price(¢)"),
+    "Bill": ("bill_eur", "Electricity bill (€)"),
+    "Temperature": ("avg_temperature", "Temperature (°C)"),
+}
 
-# Chart by bill
-st.line_chart(
-   active_table,
-   x="time",
-   y="bill_eur",
-   x_label="Time",
-   y_label="Electricity bill (€)"
-)
+charts_to_render = charts if chart_selection == "All" else {
+    chart_selection: charts[chart_selection]
+}
 
-# Chart by temperature
-st.line_chart(
-   active_table,
-   x="time",
-   y="avg_temperature",
-   x_label="Time",
-   y_label="Temperature (°C)"
-)
+for column, y_label in charts_to_render.values():
+    st.line_chart(
+        data=active_table,
+        x="time",
+        y=column,
+        x_label="Time",
+        y_label=y_label,
+    )
