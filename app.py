@@ -190,5 +190,35 @@ chart_names_to_render = (
     else (chart_selection,)
 )
 
+def render_statistics(table: pd.DataFrame) -> None:
+    st.markdown(f"**{start_date:%d/%m/%Y} - {end_date:%d/%m/%Y}**")
+    if table.empty:
+        st.info("No data in the selected range.")
+        return
+
+    total_kwh = table["kWh"].sum()
+    total_bill = table["hourly_bill_eur"].sum()
+    # Hourly price is the plain mean; paid price is weighted by consumption
+    avg_hourly_price = table["Price"].mean()
+    avg_paid_price = total_bill / total_kwh * 100 if total_kwh else 0.0
+    days = table["time"].dt.date.nunique()
+    peak = table.iloc[int(table["kWh"].to_numpy().argmax())]
+
+    st.metric("Total consumption", f"{total_kwh:,.1f} kWh")
+    st.metric("Total bill", f"{total_bill:,.2f} €")
+    st.metric("Average hourly price", f"{avg_hourly_price:.2f} ¢/kWh")
+    st.metric(
+        "Average paid price",
+        f"{avg_paid_price:.2f} ¢/kWh",
+    )
+    st.metric("Average daily consumption", f"{total_kwh / days:,.1f} kWh")
+    st.metric("Average daily bill", f"{total_bill / days:,.2f} €")
+    st.metric("Average temperature", f"{table['Temperature'].mean():.1f} °C")
+
+
 for chart_name in chart_names_to_render:
     chart_renderers[chart_name](active_table)
+
+with st.sidebar:
+    with st.expander("Statistics", expanded=True):
+        render_statistics(filtered_combine_table)
