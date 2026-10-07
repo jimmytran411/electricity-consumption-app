@@ -1,5 +1,8 @@
 import pandas as pd
 import streamlit as st
+import plotly.graph_objects as go
+from functools import partial
+from plotly.subplots import make_subplots
 
 CONSUMPTION_FILE = "Electricity_consumption_2015-2025.csv"
 PRICE_FILE = "Electricity_price_2015-2025.csv"
@@ -48,7 +51,14 @@ with st.sidebar:
 
     chart_selection = st.selectbox(
         "Show chart",
-        options=["All", "Consumption", "Price", "Bill", "Temperature"],
+        options=[
+            "All",
+            "Consumption & Temperature",
+            "Consumption",
+            "Price",
+            "Bill",
+            "Temperature",
+        ],
     )
 
 # Filter data by time range
@@ -105,6 +115,7 @@ active_table = period_data_map[group_by].round(1)
 # Change title by chart type selection
 title_by_chart = {
     "All": "Electricity Overview",
+    "Consumption & Temperature": f"{group_by} Consumption and Temperature",
     "Consumption": f"{group_by} Electricity Consumption",
     "Price": f"{group_by} Electricity Price",
     "Bill": f"{group_by} Electricity Bill",
@@ -112,22 +123,72 @@ title_by_chart = {
 }
 st.title(title_by_chart[chart_selection])
 
-charts = {
-    "Consumption": ("consumption_kwh", "Electricity consumption (kWh)"),
-    "Price": ("avg_price_cents", "Electricity price(¢)"),
-    "Bill": ("bill_eur", "Electricity bill (€)"),
-    "Temperature": ("avg_temperature", "Temperature (°C)"),
-}
+def render_consumption_temperature(table: pd.DataFrame) -> None:
+    figure = make_subplots(specs=[[{"secondary_y": True}]])
+    figure.add_trace(
+        go.Bar(
+            x=table["time"],
+            y=table["consumption_kwh"],
+            name="Electricity consumption",
+        ),
+        secondary_y=False,
+    )
+    figure.add_trace(
+        go.Scatter(
+            x=table["time"],
+            y=table["avg_temperature"],
+            name="Temperature",
+            mode="lines",
+        ),
+        secondary_y=True,
+    )
+    figure.update_xaxes(title_text="Time")
+    figure.update_yaxes(title_text="Electricity consumption (kWh)", secondary_y=False)
+    figure.update_yaxes(title_text="Temperature (°C)", secondary_y=True)
+    st.plotly_chart(figure, use_container_width=True)
 
-charts_to_render = charts if chart_selection == "All" else {
-    chart_selection: charts[chart_selection]
-}
 
-for column, y_label in charts_to_render.values():
+def render_line_chart(
+    table: pd.DataFrame, *, column: str, y_label: str
+) -> None:
     st.line_chart(
-        data=active_table,
+        data=table,
         x="time",
         y=column,
         x_label="Time",
         y_label=y_label,
     )
+
+
+chart_renderers = {
+    "Consumption & Temperature": render_consumption_temperature,
+    "Consumption": partial(
+        render_line_chart,
+        column="consumption_kwh",
+        y_label="Electricity consumption (kWh)",
+    ),
+    "Price": partial(
+        render_line_chart,
+        column="avg_price_cents",
+        y_label="Electricity price(¢)",
+    ),
+    "Bill": partial(
+        render_line_chart,
+        column="bill_eur",
+        y_label="Electricity bill (€)",
+    ),
+    "Temperature": partial(
+        render_line_chart,
+        column="avg_temperature",
+        y_label="Temperature (°C)",
+    ),
+}
+
+chart_names_to_render = (
+    ("Consumption & Temperature","Consumption", "Price", "Bill")
+    if chart_selection == "All"
+    else (chart_selection,)
+)
+
+for chart_name in chart_names_to_render:
+    chart_renderers[chart_name](active_table)
