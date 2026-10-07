@@ -185,7 +185,7 @@ chart_renderers = {
 }
 
 chart_names_to_render = (
-    ("Consumption & Temperature","Consumption", "Price", "Bill")
+    ("Consumption & Temperature","Consumption", "Temperature", "Price", "Bill")
     if chart_selection == "All"
     else (chart_selection,)
 )
